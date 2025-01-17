@@ -2,7 +2,7 @@ project_name: stream-forward
 version: 2
 builds:
   - env: [CGO_ENABLED=0]
-    targets: [go_first_class]
+    targets: [linux_amd64_v1]
 # dockers:
 # - image_templates: ["ghcr.io/eliottcassidy2000/stream-forward:{{ .Version }}"]
 #   dockerfile: Dockerfile
