@@ -19,6 +19,13 @@ jobs:
         with:
           go-version: 1.22
 
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GH_TOKEN }}
+
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:
