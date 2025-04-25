@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	//"go/version"
 	"io"
 	"log"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 
 const (
 	owner = "eliottcassidy2000"
-	//repo  = "myapp"
 )
 
 type GitHubRelease struct {
