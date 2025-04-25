@@ -73,6 +73,6 @@ func proxyRelease(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/", proxyRelease)
-	log.Println("Listening on :8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Println("Listening on :80")
+	log.Fatal(http.ListenAndServe(":80", nil))
 }
