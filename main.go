@@ -1,27 +1,28 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"log"
-	"os"
-	"time"
+	"strconv"
 
 	"github.com/datarhei/gosrt"
 )
+//hp1a-55bj-6w4m-h8ef-8heb
+const youtubeRTMP = "rtmp://a.rtmp.youtube.com/live2/hp1a-55bj-6w4m-h8ef-8heb"
 
 // StreamProcessor handles the management of input streams (SRT), and the logic for sending streams to YouTube and Twitch.
 type StreamProcessor struct {
-	youtubeURL  string
-	twitchURL   string
+	targets  []string
+	f   string
 	srtPortLow  int
 	srtPortHigh int
 }
 
 // NewStreamProcessor creates and initializes a StreamProcessor
-func NewStreamProcessor(youtubeURL, twitchURL string, srtPortLow, srtPortHigh int) *StreamProcessor {
+func NewStreamProcessor(targets []string, f string, srtPortLow, srtPortHigh int) *StreamProcessor {
 	return &StreamProcessor{
-		youtubeURL:  youtubeURL,
-		twitchURL:   twitchURL,
+		targets:  targets,
+		f:   f,
 		srtPortLow:  srtPortLow,
 		srtPortHigh: srtPortHigh,
 	}
@@ -32,7 +33,7 @@ func (sp *StreamProcessor) manageStreams() error {
 	// Creating an SRT listener for each SRT port in the range
 	for port := sp.srtPortLow; port <= sp.srtPortHigh; port++ {
 		// Create the SRT listener for each port
-		srtListener, err := gosrt.Listen(":" + string(port))
+		srtListener, err := srt.Listen("srt",":" + strconv.Itoa(port), srt.DefaultConfig())
 		if err != nil {
 			log.Printf("Failed to listen on SRT port %d: %v", port, err)
 			continue
@@ -48,35 +49,59 @@ func (sp *StreamProcessor) manageStreams() error {
 }
 
 // handleSRTInputs processes incoming SRT connections and sends them to YouTube and Twitch
-func (sp *StreamProcessor) handleSRTInputs(listener *gosrt.Listener) {
+func (sp *StreamProcessor) handleSRTInputs(listener srt.Listener) {
 	for {
 		// Accept a new SRT connection
-		conn, err := listener.Accept()
+		conn, err := listener.Accept2()
 		if err != nil {
 			log.Printf("Failed to accept SRT connection: %v", err)
 			return
 		}
 		log.Printf("New SRT connection accepted")
+		fmt.Println(conn)
 
 		// Here you would set up the stream to handle the video/audio streams (setupInputStreams)
 		// and then send it to YouTube and Twitch (setupOutputStreams)
 
 		// Start sending to YouTube and Twitch in separate goroutines (to handle both streams)
-		go sp.sendToYouTube(conn)
-		go sp.sendToTwitch(conn)
+		//go sp.sendToYouTube(conn)
+		//go sp.sendToTwitch(conn)
 	}
 }
 
 // sendToYouTube sends the stream to YouTube, using the stream's URL and key
-func (sp *StreamProcessor) sendToYouTube(conn gosrt.Conn) {
+func (sp *StreamProcessor) sendToYouTube(conn srt.Conn) {
 	// Handle sending the stream to YouTube using HLS
 	log.Println("Sending stream to YouTube via HLS")
-	// Setup and send the stream using HLS protocol, handle transcoding and stream
-	// Call transcoding and streaming logic here
+	// Step 2: Connect to YouTube RTMP server
+	client, err := rtmp.NewClient(youtubeRTMP)
+	if err != nil {
+		log.Fatalf("Error connecting to YouTube RTMP: %v", err)
+	}
+	defer client.Close()
+
+	fmt.Println("Connected to YouTube RTMP")
+
+	// Step 3: Stream data from SRT to RTMP
+	for {
+		data := make([]byte, 1316) // Standard TS packet size
+		n, err := srt.Read(data)
+		if err != nil {
+			log.Printf("Error reading SRT stream: %v", err)
+			//time.Sleep(1 * time.Second) // Prevent tight loop on errors
+			continue
+		}
+
+		err = client.Write(data[:n])
+		if err != nil {
+			log.Printf("Error sending data to YouTube: %v", err)
+			break
+		}
+	}
 }
 
 // sendToTwitch sends the stream to Twitch, transcoding from H.265 to H.264
-func (sp *StreamProcessor) sendToTwitch(conn gosrt.Conn) {
+func (sp *StreamProcessor) sendToTwitch(conn srt.Conn) {
 	// Handle transcoding the stream and sending to Twitch via RTMP
 	log.Println("Sending stream to Twitch via RTMP")
 	// Setup and send the stream, ensure H.264 transcoding for Twitch compatibility
@@ -85,13 +110,13 @@ func (sp *StreamProcessor) sendToTwitch(conn gosrt.Conn) {
 
 // main function to initialize the StreamProcessor and start managing streams
 func main() {
-	youtubeURL := "rtmp://youtube_url/live/"
-	twitchURL := "rtmp://twitch_url/live/"
+	var targets [] string 
+	f := "rtmp://twitch_url/live/"
 	srtPortLow := 5000
 	srtPortHigh := 5005
 
 	// Create the stream processor
-	sp := NewStreamProcessor(youtubeURL, twitchURL, srtPortLow, srtPortHigh)
+	sp := NewStreamProcessor(targets, f, srtPortLow, srtPortHigh)
 
 	// Start managing SRT streams
 	if err := sp.manageStreams(); err != nil {
